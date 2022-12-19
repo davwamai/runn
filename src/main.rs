@@ -1,4 +1,4 @@
-use ndarray::{Array2, s};
+use ndarray::{Array2, s, ArrayBase, OwnedRepr, Dim};
 
 struct LayerDense {
     weights: Array2<f32>,
@@ -34,37 +34,51 @@ impl ActivationSoftmax {
         exp_values.mapv(|x| x / sum)
     }
 }
-struct Loss;
+struct Loss{
+    base: LossCategoricalCrossEntropy,
+}
 
 impl Loss {
-    fn calculate(&self, output: &Array2<f32>, y: &Array2<f32>) -> f32 {
-        let sample_losses = self.forward(output, y);
-        sample_losses.mean()
+    fn new() -> Self {
+        Self { base: LossCategoricalCrossEntropy }
+    }
+    fn calculate(&self, output: &[f64], y: &[f64]) -> f64 {
+        let sample_losses = self.LossCategoricalCrossEntropy.forward(output, y);
+        let data_loss = sample_losses.iter().sum::<f64>() / sample_losses.len() as f64;
+        data_loss
     }
 }
-struct LossCategoricalCrossEntropy<Loss>;
 
-impl LossCategoricalCrossEntropy<Loss> {
-    fn forward(&self, y_pred: &Array2<f32>, y_true: &Array2<f32>) -> Array2<f32> {
-        let samples = y_pred.shape()[0];
-        let y_pred_clipped = y_pred.mapv(|x| x.max(1e-7).min(1.0 - 1e-7));
+struct LossCategoricalCrossEntropy;
 
-        let correct_confidences: Array2<f32>;
-        if y_true.shape()[1] == 1 {
-            correct_confidences = y_pred_clipped.slice(s![.., y_true.slice(s![.., 0])]);
+impl LossCategoricalCrossEntropy {
+  
+
+    fn forward(&self, y_pred: &[f64], y_true: &[f64]) -> Vec<f64> {
+        let samples = y_pred.len();
+        let y_pred_clipped = y_pred.iter().map(|y| y.max(1e-7).min(1.0 - 1e-7)).collect::<Vec<f64>>();
+
+        let correct_confidences: Vec<f64> = if y_true.len() == samples {
+            y_pred_clipped
+                .iter()
+                .enumerate()
+                .filter_map(|(i, y)| if i as i64 == y_true[i] as i64 { Some(*y) } else { None })
+                .collect()
         } else {
-            correct_confidences = y_pred_clipped * y_true;
-            correct_confidences = correct_confidences.sum_axis(ndarray::Axis(1));
-        }
+            y_pred_clipped
+                .iter()
+                .zip(y_true.chunks(samples))
+                .map(|(y_pred, y_true)| y_pred * y_true.iter().sum::<f64>())
+                .collect()
+        };
 
-        let negative_log_likelihoods = correct_confidences.mapv(|x| -x.ln());
+        let negative_log_likelihoods: Vec<f64> = correct_confidences
+            .iter()
+            .map(|y| (-y.ln()).max(f64::EPSILON))
+            .collect();
         negative_log_likelihoods
     }
 }
-
-
-
-
 
 fn main() {
     let inputs = [1.0, 2.0, 3.0, 2.5];
