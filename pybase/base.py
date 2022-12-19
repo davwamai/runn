@@ -63,17 +63,16 @@ class Loss_CategoricalCrossEntropy(Loss):
 
         negative_log_likelihoods = -np.log(correct_confidences)
         return negative_log_likelihoods
-
         
 ##################################################################################################
 
 
-X, Y = spir_data(100, 3)
+X, Y = spir_data(100, 4)
 
-dense1 = Layer_Dense(2,3)
+dense1 = Layer_Dense(2,4)
 activation1 = Activation_RELU()
 
-dense2 = Layer_Dense(3, 3)
+dense2 = Layer_Dense(4, 4)
 activation2 = Activation_Softmax()
 
 dense1.forward(X)
@@ -87,6 +86,12 @@ print(activation2.output[:5])
 loss_function = Loss_CategoricalCrossEntropy()
 loss = loss_function.calculate(activation2.output, Y)
 print("Loss: ", loss)
+
+import matplotlib.pyplot as plt
+
+plt.scatter(X[:,0], X[:,1])
+# plt.scatter(X[:,0], X[:,1], c=Y, cmap="rainbow")
+plt.show()
 
 
 
