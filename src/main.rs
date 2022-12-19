@@ -1,5 +1,6 @@
 use ndarray::{Array2, s, ArrayBase, OwnedRepr, Dim};
 
+
 struct LayerDense {
     weights: Array2<f32>,
     biases: Array2<f32>,
@@ -24,30 +25,42 @@ impl ActivationRelu {
         inputs.mapv(|x| x.max(0.0))
     }
 }
-
-struct ActivationSoftmax;
+struct ActivationSoftmax {
+    output: Vec<f64>,
+}
 
 impl ActivationSoftmax {
-    fn forward(inputs: &Array2<f32>) -> Array2<f32> {
-        let exp_values = inputs.mapv(|x| x.exp() - inputs.max(ndarray::Axis(1)));
-        let sum = exp_values.sum();
-        exp_values.mapv(|x| x / sum)
+    fn forward(&mut self, inputs: &[f64]) {
+        let max_input = inputs.iter().fold(f64::NEG_INFINITY, |a, b| a.max(*b));
+        let exp_values: Vec<f64> = inputs.iter().map(|x| (x - max_input).exp()).collect();
+        let sum_exp_values = exp_values.iter().sum();
+        let probabilities: Vec<f64> = exp_values.iter().map(|x| x / sum_exp_values).collect();
+        self.output = probabilities;
     }
 }
-struct Loss{
-    base: LossCategoricalCrossEntropy,
-}
+// struct ActivationSoftmax;
 
-impl Loss {
-    fn new() -> Self {
-        Self { base: LossCategoricalCrossEntropy }
-    }
-    fn calculate(&self, output: &[f64], y: &[f64]) -> f64 {
-        let sample_losses = self.LossCategoricalCrossEntropy.forward(output, y);
-        let data_loss = sample_losses.iter().sum::<f64>() / sample_losses.len() as f64;
-        data_loss
-    }
-}
+// impl ActivationSoftmax {
+//     fn forward(inputs: &Array2<f32>) -> Array2<f32> {
+//         let exp_values:Array2<f32> = inputs.mapv(|x: f32| x.exp() - inputs.axis);
+//         let sum = exp_values.sum();
+//         exp_values.mapv(|x| x / sum)
+//     }
+// }
+// struct Loss{
+//     base: LossCategoricalCrossEntropy,
+// }
+
+// impl Loss {
+//     fn new() -> Self {
+//         Self { base: LossCategoricalCrossEntropy }
+//     }
+//     fn calculate(&self, output: &[f64], y: &[f64]) -> f64 {
+//         let sample_losses = LossCategoricalCrossEntropy.forward(output, y);
+//         let data_loss = sample_losses.iter().sum::<f64>() / sample_losses.len() as f64;
+//         data_loss
+//     }
+// }
 
 struct LossCategoricalCrossEntropy;
 
@@ -78,6 +91,14 @@ impl LossCategoricalCrossEntropy {
             .collect();
         negative_log_likelihoods
     }
+
+    fn calculate(&self, output: &[f64], y: &[f64]) -> f64 {
+                let sample_losses = LossCategoricalCrossEntropy.forward(output, y);
+                let data_loss = sample_losses.iter().sum::<f64>() / sample_losses.len() as f64;
+                data_loss
+            }
+
+
 }
 
 fn main() {
